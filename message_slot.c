@@ -8,6 +8,7 @@
 #include <linux/fs.h>      /* for register_chrdev */
 #include <linux/uaccess.h> /* for get_user and put_user */
 #include <linux/string.h>  /* for memset. NOTE - not string.h!*/
+#include <linux/slab.h> /*for kmalloc(), kfree()*/
 #include "message_slot.h"
 
 // auxilary method for kfreeing memory allocated for channels of a slot
@@ -19,30 +20,54 @@ static void freeChannels(channel *ch)
         kfree(ch->msg_buffer);
     kfree(ch);
 }
+static slot *newSlot(){
+    slot *ret = (slot *)kmalloc(sizeof(slot), GFP_KERNEL);
+    if(ret == NULL)//malloc failed
+        return NULL;
+    else{//initialize to default vals
+        ret->slot_channels = NULL;
+        ret->next = NULL;
+        return ret;
+    }
+}
+static channel *newChannel()
+{
+    channel *ret = (channel *)kmalloc(sizeof(channel), GFP_KERNEL);
+    if (ret == NULL) // malloc failed
+        return NULL;
+    else
+    { // initialize to default vals
+        ret->msg_buffer = NULL;
+        ret->next = NULL;
+        ret->length = 0;
+        return ret;
+    }
+}
 //================== DEVICE FUNCTIONS ===========================
 static int device_open(struct inode *inode, struct file *file)
 {
     int cur_minor = iminor(inode);
-    if(open_slots == NULL) //this is the first slot created
-        open_slots = (slot *)kmalloc(sizeof(slot), GFP_KERNEL);
+    if(open_slots == NULL){ //this is the first slot created
+        open_slots = newSlot();
         if(open_slots == NULL){//malloc failed
-            errno = ENOSPC;
-            return -1;
+            printk("kmalloc failed!");
+            return -ENOSPC;
         }
         open_slots->minor = cur_minor;//successfully created slot for desired minor
         return 0;
+    }
     else{
         slot *cur_slot = open_slots;
         while (cur_slot->minor != cur_minor){ //search if there is allready open slot with cur_minor
             if(cur_slot->next != NULL)
                 cur_slot = cur_slot->next;
             else{//scanned all slots and none is with cur_minor
-                cur_slot->next = (slot *)kmalloc(sizeof(slot), GFP_KERNEL);
+                cur_slot->next = newSlot();
                 cur_slot = cur_slot->next;
                 if (cur_slot == NULL)
                 { // malloc failed
-                    errno = ENOSPC;
-                    return -1;
+                    printk("kmalloc failed!");
+                    return -ENOSPC;
                 }
                 cur_slot->minor = cur_minor; // successfully created slot for desired minor at end of list
             }
@@ -75,11 +100,11 @@ static int device_release(struct inode* inode, struct file*  file)
     {
         int minor;
         slot *cur_slot = open_slots;
-        channel *cur_channel, new_channel;
+        channel *cur_channel, *new_channel;
         if (ioctl_command_id != MSG_SLOT_CHANNEL || ioctl_param <= 0)
         {
-            errno = EINVAL;
-            return -1;
+            printk("invalid ioctl parameters!");
+            return -EINVAL;
         }
         minor = iminor(file->f_inode);
         while (cur_slot != NULL)
@@ -90,8 +115,8 @@ static int device_release(struct inode* inode, struct file*  file)
         }
         if (cur_slot == NULL)
         { // no slot detected for this minor
-            errno = EINVAL;
-            return -1;
+            printk("no slot available by this minor: ",minor);
+            return -EINVAL;
         }
         cur_channel = cur_slot->slot_channels;
         while (cur_channel != NULL)
@@ -104,11 +129,11 @@ static int device_release(struct inode* inode, struct file*  file)
             cur_channel = cur_channel->next;
         }
         // if we reached here there is no chanel with param number
-        new_channel = (channel *)kmalloc(sizeof(channel), GFP_KERNEL);
+        new_channel = newChannel();
         if (new_channel == NULL)
         {
-            errno = ENOSPC;
-            return -1;
+            printk("kmalloc failed!");
+            return -ENOSPC;
         }
         new_channel->id = ioctl_param;
         new_channel->next = cur_slot->slot_channels;
@@ -123,21 +148,21 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     char *channel_msg;
     int i=0;
     if(length>BUF_LEN || length<=0){
-        errno = EMSGSIZE;
-        return -1;
+        printk("invalid message size!");
+        return -EMSGSIZE;
     }
     active_channel = (channel *)file->private_data;
     if(active_channel == NULL){// no active channel
-        errno = EINVAL;
-        return -1;
+        printk("no active channel set for this slot!");
+        return -EINVAL;
     }
     //free old message and malloc space for new one
     if (active_channel->msg_buffer != NULL)
         kfree(active_channel->msg_buffer);
     active_channel->msg_buffer = (char *)kmalloc(sizeof(char)*length, GFP_KERNEL);
     if (active_channel->msg_buffer == NULL){
-        errno = ENOSPC;
-        return -1;
+        printk("kmalloc failed!");
+        return -ENOSPC;
     }
     channel_msg = active_channel->msg_buffer;
     for(;i<length;i++){
@@ -157,18 +182,18 @@ static ssize_t device_read(struct file *file, char __user *buffer, size_t length
 
     if (active_channel == NULL)
     { // no active channel
-        errno = EINVAL;
-        return -1;
+        printk("no active channel set for this slot!");
+        return -EINVAL;
     }
     channel_msg = active_channel->msg_buffer;
     msg_length = active_channel->length;
     if (channel_msg == NULL){//channel msg is empty - nothing to read
-        errno = EWOULDBLOCK;
-        return -1;
+        printk("channel is empty - no msg to read here!");
+        return -EWOULDBLOCK;
     }
     if(msg_length> (int)length){//buffer smaller than message
-        errno = ENOSPC;
-        return -1;
+        printk("buffer sent is too small to read the message!");
+        return -ENOSPC;
     }
     for (; i < msg_length; i++){
         if(put_user(channel_msg[i], &buffer[i]) != 0)

@@ -11,15 +11,15 @@
 
 typedef struct channel{
     unsigned int id;
-    char *msg_buffer = NULL;
-    unsigned int length = 0;
-    channel *next = NULL;
+    char *msg_buffer;
+    unsigned int length;
+    channel *next;
 }channel;
 
 typedef struct slot{
     unsigned int minor;
-    channel *slot_channels =NULL;
-    slot *next = NULL;
+    channel *slot_channels;
+    slot *next;
 }slot;
 
 static slot *open_slots;
