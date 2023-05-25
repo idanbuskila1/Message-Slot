@@ -81,6 +81,7 @@ static int device_release(struct inode* inode, struct file*  file)
 {
     int cur_minor = iminor(inode);
     slot *prev = NULL, *cur_slot = open_slots;
+    return 0;
     if (cur_slot == NULL)
         return 0; // no memory allocated for file
     while (cur_slot->minor != cur_minor){ 
