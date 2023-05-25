@@ -11,6 +11,8 @@
 #include <linux/slab.h> /*for kmalloc(), kfree()*/
 #include "message_slot.h"
 
+MODULE_LICENSE("GPL");
+
 // auxilary method for kfreeing memory allocated for channels of a slot
 static void freeChannels(channel *ch)
 {
@@ -20,7 +22,7 @@ static void freeChannels(channel *ch)
         kfree(ch->msg_buffer);
     kfree(ch);
 }
-static slot *newSlot(){
+static slot *newSlot(void){
     slot *ret = (slot *)kmalloc(sizeof(slot), GFP_KERNEL);
     if(ret == NULL)//malloc failed
         return NULL;
@@ -30,7 +32,7 @@ static slot *newSlot(){
         return ret;
     }
 }
-static channel *newChannel()
+static channel *newChannel(void)
 {
     channel *ret = (channel *)kmalloc(sizeof(channel), GFP_KERNEL);
     if (ret == NULL) // malloc failed
@@ -115,7 +117,7 @@ static int device_release(struct inode* inode, struct file*  file)
         }
         if (cur_slot == NULL)
         { // no slot detected for this minor
-            printk("no slot available by this minor: ",minor);
+            printk("no slot available by this minor: ");
             return -EINVAL;
         }
         cur_channel = cur_slot->slot_channels;
@@ -159,7 +161,7 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     //free old message and malloc space for new one
     if (active_channel->msg_buffer != NULL)
         kfree(active_channel->msg_buffer);
-    active_channel->msg_buffer = (char *)kmalloc(sizeof(char)*length, GFP_KERNEL);
+    active_channel->msg_buffer = (char *)kmalloc(sizeof(char)*BUF_LEN, GFP_KERNEL);
     if (active_channel->msg_buffer == NULL){
         printk("kmalloc failed!");
         return -ENOSPC;
@@ -195,7 +197,7 @@ static ssize_t device_read(struct file *file, char __user *buffer, size_t length
         printk("buffer sent is too small to read the message!");
         return -ENOSPC;
     }
-    for (; i < msg_length; i++){
+    for (; i < length; i++){
         if(put_user(channel_msg[i], &buffer[i]) != 0)
             return -1;
     }
@@ -214,12 +216,14 @@ struct file_operations Fops = {
 static int __init simple_init(void){//took parts of it from recitaion
     int rc = -1;
     // Register driver capabilities. Obtain major num
-    rc = register_chrdev(MAJOR_NUM, DEVICE_RANGE_NAME, &Fops);
+    rc = register_chrdev(MAJOR_NUM, DEVICE_FILE_NAME, &Fops);
     // Negative values signify an error
     if (rc < 0){
-        printk(KERN_ALERT "%s registraion failed for  %d\n", DEVICE_FILE_NAME, MAJOR_NUM);
+        printk(KERN_ALERT "%s registraion failed for  %d\n", DEVICE_RANGE_NAME, MAJOR_NUM);
         return rc;
     }
+    /*#####DEBUG########*/
+    printk("Registration is successful \n");
     open_slots = NULL;//initialize open slots data structure
     return 0;
 }

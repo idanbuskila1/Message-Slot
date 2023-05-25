@@ -13,13 +13,13 @@ typedef struct channel{
     unsigned int id;
     char *msg_buffer;
     unsigned int length;
-    channel *next;
+    struct channel *next;
 }channel;
 
 typedef struct slot{
     unsigned int minor;
     channel *slot_channels;
-    slot *next;
+    struct slot *next;
 }slot;
 
 static slot *open_slots;

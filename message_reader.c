@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-    int fd, len_read, len_write;
+    int fd, len_read;
     char *msg[BUF_LEN];
 
     if (argc != 3)
@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
         perror("wrong number of arguments to reader");
         exit(1);
     }
-    fd = open(argv[1], O_WRONLY);
+    fd = open(argv[1], O_RDONLY);
     if (fd == -1)
     {
         perror("couldnt open file");
@@ -33,12 +33,8 @@ int main(int argc, char *argv[])
         exit(1);
     }
     close(fd);
-    while ((len_write = write(1, msg, len_read)) > 0){
-        len_read -= len_write;
-        msg = msg + len_write;
-    }
-    if(len_write <0){
-        perror("couldnt print message to stdout");
+    if(write(1, msg, len_read)!= len_read){
+        perror("Failed to print message");
         exit(1);
     }
     exit(0);
