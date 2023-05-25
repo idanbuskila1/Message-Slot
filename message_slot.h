@@ -21,6 +21,4 @@ typedef struct slot{
     channel *slot_channels;
     struct slot *next;
 }slot;
-
-static slot *open_slots;
 #endif
