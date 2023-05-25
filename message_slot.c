@@ -161,7 +161,7 @@ static ssize_t device_write(struct file *file, const char __user *buffer, size_t
     //free old message and malloc space for new one
     if (active_channel->msg_buffer != NULL)
         kfree(active_channel->msg_buffer);
-    active_channel->msg_buffer = (char *)kmalloc(sizeof(char)*BUF_LEN, GFP_KERNEL);
+    active_channel->msg_buffer = (char *)kmalloc(sizeof(char)*length, GFP_KERNEL);
     if (active_channel->msg_buffer == NULL){
         printk("kmalloc failed!");
         return -ENOSPC;
@@ -197,11 +197,11 @@ static ssize_t device_read(struct file *file, char __user *buffer, size_t length
         printk("buffer sent is too small to read the message!");
         return -ENOSPC;
     }
-    for (; i < length; i++){
+    for (; i < msg_length; i++){
         if(put_user(channel_msg[i], &buffer[i]) != 0)
             return -1;
     }
-    return length;
+    return msg_length;
 }
 //==================== DEVICE SETUP =============================
 
