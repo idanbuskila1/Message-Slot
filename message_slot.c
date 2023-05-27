@@ -81,24 +81,6 @@ static int device_open(struct inode *inode, struct file *file)
 }
 static int device_release(struct inode* inode, struct file*  file)
 {
-    int cur_minor = iminor(inode);
-    slot *prev = NULL, *cur_slot = open_slots;
-    return 0;
-    if (cur_slot == NULL)
-        return 0; // no memory allocated for file
-    while (cur_slot->minor != cur_minor){ 
-        if (cur_slot->next != NULL){
-            prev = cur_slot;
-            cur_slot = cur_slot->next;
-        }
-        else return 0;//no memory allocated for file
-    }
-    if(prev == NULL)//free first node in open slots
-        open_slots = open_slots->next;
-    else
-        prev->next = cur_slot->next;
-    freeChannels(cur_slot->slot_channels);
-    kfree(cur_slot);
     return 0;
 }
     static long device_ioctl(struct file * file, unsigned int ioctl_command_id, unsigned long ioctl_param)
