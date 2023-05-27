@@ -203,7 +203,7 @@ static int __init simple_init(void){//took parts of it from recitaion
     rc = register_chrdev(MAJOR_NUM, DEVICE_FILE_NAME, &Fops);
     // Negative values signify an error
     if (rc < 0){
-        printk(KERN_ALERT "%s registraion failed for  %d\n", DEVICE_RANGE_NAME, MAJOR_NUM);
+        printk(KERN_ALERT "%s registraion failed for  %d\n", DEVICE_FILE_NAME, MAJOR_NUM);
         return rc;
     }
     open_slots = NULL;//initialize open slots data structure
@@ -222,7 +222,7 @@ static void __exit simple_cleanup(void)
         kfree(prev);//free slot space
     }
     //unregister module
-    unregister_chrdev(MAJOR_NUM, DEVICE_RANGE_NAME);
+    unregister_chrdev(MAJOR_NUM, DEVICE_FILE_NAME);
 }
 module_init(simple_init);
 module_exit(simple_cleanup);
